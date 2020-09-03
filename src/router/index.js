@@ -1,30 +1,81 @@
-import Vue from "vue";
-import VueRouter from "vue-router";
-import Home from "../views/Home.vue";
+import Vue from 'vue'
+import VueRouter from 'vue-router'
 
-Vue.use(VueRouter);
+import store from '@/store'
+
+import Nprogress from 'nprogress'
+
+Vue.use(VueRouter)
 
 const routes = [
   {
-    path: "/",
-    name: "Home",
-    component: Home
+    path: '/',
+    name: 'event-list',
+    component: () => import('@/views/EventList.vue'),
+    props: true
   },
   {
-    path: "/about",
-    name: "About",
-    // route level code-splitting
-    // this generates a separate chunk (about.[hash].js) for this route
-    // which is lazy-loaded when the route is visited.
-    component: () =>
-      import(/* webpackChunkName: "about" */ "../views/About.vue")
+    path: '/event/:id',
+    name: 'event-show',
+    component: () => import('@/views/EventShow.vue'),
+    props: true,
+    beforeEnter(to, from, next) {
+      store
+        .dispatch('event/fetchEvent', to.params.id)
+        .then(event => {
+          to.params.event = event
+          next()
+        })
+        .catch(error => {
+          if (error.response && error.response.status == '404') {
+            next({
+              name: '404',
+              params: { resource: 'event' }
+            })
+          } else {
+            next({ name: 'network-issue' })
+          }
+        })
+    }
+  },
+  {
+    path: '/create',
+    name: 'event-create',
+    component: () => import('@/views/EventCreate.vue')
+  },
+  {
+    path: '/404',
+    name: '404',
+    component: () => import('@/views/NotFound.vue'),
+    props: true
+  },
+  {
+    path: '/network-issue',
+    name: 'network-issue',
+    component: () => import('@/views/NetworkIssue')
+  },
+  {
+    path: '*',
+    redirect: {
+      name: '404',
+      params: { resource: 'page' }
+    }
   }
-];
+]
 
 const router = new VueRouter({
-  mode: "history",
+  mode: 'history',
   base: process.env.BASE_URL,
   routes
-});
+})
 
-export default router;
+router.beforeEach((to, from, next) => {
+  Nprogress.start()
+  next()
+})
+
+router.afterEach(() => {
+  Nprogress.done()
+})
+
+export default router
